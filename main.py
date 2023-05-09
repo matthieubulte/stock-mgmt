@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import cvxpy as cp
 import io
+from scipy.sparse import dok_matrix
 
 def load_data(filename):
     SRC_ORDERS_ID = 'N° commande CN'
@@ -48,7 +49,7 @@ def load_data(filename):
 
 def compute_optimal_alloc(orders_df, stock_df):
     def make_order_matrix(orders_df, num_orders, num_items):
-        order_qty_matrix = np.zeros((num_items, num_orders))
+        order_qty_matrix = dok_matrix((num_items, num_orders), dtype=np.float32)
         for _, order in orders_df.iterrows():
             order_qty_matrix[order['article_index'], order['order_index']] += order['quantity']
         return order_qty_matrix
@@ -77,8 +78,10 @@ st.markdown(f"<h1 style='text-align: center'>Allocation de commandes</h1>", unsa
 
 in_file = st.file_uploader("Entrez le fichier de stocks et de commandes", type=["xlsx"])
 if in_file is not None:
+    print('File uploaded')
     orders_df, stock_df = load_data(in_file)
     
+    print('Writing out ')
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### Commandes")
@@ -91,14 +94,17 @@ if in_file is not None:
         st.write(stock_df[['article_id', 'stock']])
         st.markdown(f'{stock_df["article_id"].nunique()} articles uniques en stock')
         st.markdown(f'Quantité totale: {np.round(stock_df["stock"].sum(), 2)}')
-    
+
+    print('Computing optimal alloc...', end='')
     order_selection_sol, prob = compute_optimal_alloc(orders_df, stock_df)
+
+    print('done')
 
     st.markdown('## Allocation optimale') 
     st.markdown(f'Nombre de commandes satisfaites: {int(order_selection_sol.sum())} / {orders_df["order_id"].nunique()} (≈{ np.round(order_selection_sol.sum()/orders_df["order_id"].nunique()*100, 2) }% des commandes)')
     st.markdown(f'Nombre d\'articles correspondants: {int(prob.value)} (≈{np.round(prob.value/orders_df.quantity.sum()*100, 2)}% du volume commandé)')
 
-
+    print('Making result_df')
     delivered_orders = result_df(orders_df, order_selection_sol)
 
     st.markdown('### Détails de l\'allocation optimale')
