@@ -1,0 +1,12 @@
+runtime: python
+env: flex
+
+runtime_config:
+  operating_system: "ubuntu22"
+  python_version: "3.9.16"
+
+entrypoint: streamlit run main.py --server.port=$PORT --server.enableCORS=false --server.enableXsrfProtection=false --server.enableWebsocketCompression=false
+
+automatic_scaling:
+  max_num_instances: 1
+
